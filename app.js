@@ -1,4 +1,3 @@
-//jshint esversion:6
 require('dotenv').config();
 const express = require("express");
 const ejs = require("ejs");
@@ -9,11 +8,13 @@ const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const findOrCreate = require("mongoose-findorcreate");
+const nocache = require("nocache");
 
 const app = express();
 
 app.use(express.static("public"));
 app.set("view engine", "ejs");
+app.use(nocache());
 app.use(bodyParser.urlencoded({extended: true}));
 
 app.use(session({
@@ -78,6 +79,7 @@ passport.use(new GoogleStrategy({
   }
 ));
 
+
 app.get("/", function(req, res){
     res.render("home");
 });
@@ -100,22 +102,24 @@ app.get("/register", function(req, res){
 });
 
 app.get("/secrets", (req, res) => {
-        res.set(
-            'Cache-Control', 
-            'no-cache, private, no-store, must-revalidate, max-stal e=0, post-check=0, pre-check=0'
-        );
-        User.find({secret:{$ne:null}},function (err, users){
-          if(!err){
-            if (users){
-              res.render("secrets",{usersWithSecrets:users});
-            }else {
-              console.log(err);
-            }
-          }else {
-            console.log(err);
-          }
-        });
+  if(req.isAuthenticated()){
+    User.find({secret:{$ne:null}},function (err, users){
+      if(!err){
+        if (users){
+          res.render("secrets",{usersWithSecrets:users});
+        }else {
+          console.log(err);
+        }
+      }else {
+        console.log(err);
+      }
     });
+}else {
+        res.redirect("/");
+      }
+});
+
+        
 
 app.route("/submit")
 
@@ -160,14 +164,13 @@ app.post("/submit/delete",function (req, res){
   }
 });
      
-app.get("/logout", (req, res, next) => {
-        req.logout((err) => {
-            if (err) {
-                return next(err); 
-            } else {
-                res.redirect("/");
-            }
-        });  
+app.get('/logout', function(req, res) {
+  req.logout(function(err) {
+    if (err) {
+      console.log(err);
+    }
+    res.redirect('/');
+  });
 });
      
 
@@ -188,13 +191,20 @@ app.post("/register", function(req, res){
 });
 
 // Login Process
-app.post("/login", (req, res, next) => {
-  passport.authenticate("local", {
-    successRedirect: "/secrets",
-    failureRedirect: "/login",
+app.post('/login', function (req, res) {
+  const logUser = new User ({
+      username: req.body.username,
+      password: req.body.password
+  })
 
-    failureMessage: true
-  })(req, res, next);
+  passport.authenticate('local')(req, res, function () {
+      req.logIn(logUser, function (err) {
+          if (err) {
+              console.log(err);
+          }
+      })
+      res.redirect('/secrets')
+  })
 });
 
 
