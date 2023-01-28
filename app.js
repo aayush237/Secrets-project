@@ -8,13 +8,11 @@ const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const findOrCreate = require("mongoose-findorcreate");
-const nocache = require("nocache");
 
 const app = express();
 
 app.use(express.static("public"));
 app.set("view engine", "ejs");
-app.use(nocache());
 app.use(bodyParser.urlencoded({extended: true}));
 
 app.use(session({
